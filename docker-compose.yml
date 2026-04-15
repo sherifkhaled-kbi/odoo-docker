@@ -1,0 +1,54 @@
+version: "3.9"
+
+services:
+  odoo:
+    image: odoo:${ODOO_VERSION}
+    container_name: odoo_${ODOO_VERSION}
+    depends_on:
+      - db
+    ports:
+      - "${ODOO_PORT}:8069"
+      - "${LONGPOLLING_PORT}:8072"
+    environment:
+      HOST: db
+      USER: ${POSTGRES_USER}
+      PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      # Odoo config (editable by developers)
+      - ${ODOO_BASE}/config:/etc/odoo
+
+      # Custom addons (shared dev folder)
+      - ${ODOO_BASE}/custom-addons:/mnt/custom-addons
+
+      # Enterprise addons (shared base)
+      - ${ODOO_BASE}/enterprise:/mnt/enterprise
+
+      # Odoo data (separate persistent volume)
+      - odoo_data:/var/lib/odoo
+
+    command: >
+      odoo
+      --addons-path=/mnt/custom-addons,/mnt/enterprise,/usr/lib/python3/dist-packages/odoo/addons
+    restart: unless-stopped
+    networks:
+      - odoo_net
+
+  db:
+    image: postgres:${POSTGRES_VERSION}
+    container_name: postgres_${ODOO_VERSION}
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - odoo_db:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - odoo_net
+networks:
+  odoo_net:
+    driver: bridge
+
+volumes:
+  odoo_data:
+  odoo_db:
